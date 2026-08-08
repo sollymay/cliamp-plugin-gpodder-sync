@@ -1,0 +1,1 @@
+# cliamp-plugin-gpodder-sync
