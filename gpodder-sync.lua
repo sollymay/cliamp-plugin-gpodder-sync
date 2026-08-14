@@ -23,12 +23,12 @@
 local p = plugin.register({
     name = "gpodder-sync",
     type = "hook",
-    version = "0.0.1",
+    version = "0.0.2",
     description = "Sync gpodder.net subscriptions, play history, progress and downloads for cliamp",
     permissions = { "keymap", "control", "exec" },
 })
 
-local USER_AGENT = "cliamp-gpodder-sync/0.0.1"
+local USER_AGENT = "cliamp-gpodder-sync/0.0.2"
 
 -- Tuning constants. Tune these in [plugins.gpodder-sync] config where noted.
 local STORE_LIMIT = 1000 -- max entries kept in any plugin store table
@@ -187,12 +187,23 @@ local function api_headers(extra)
     return headers
 end
 
+-- cliamp.http caps requests at 5s and raises a Lua error on transport failures
+-- (timeouts, blocked hosts, ...), so every call goes through a pcall guard.
+-- api.get/api.post always return (body, status) and use status 0 to signal a
+-- transport error; the existing `status ~= 200` checks then handle it like any
+-- other failed request instead of the error unwinding into handlers / sync.
+local function http_guard(fn, ...)
+    local ok, body, status = pcall(fn, ...)
+    if not ok then return nil, 0 end
+    return body, status
+end
+
 function api.get(path)
-    return cliamp.http.get(api.base_url() .. path, { headers = api_headers() })
+    return http_guard(cliamp.http.get, api.base_url() .. path, { headers = api_headers() })
 end
 
 function api.post(path, payload)
-    return cliamp.http.post(api.base_url() .. path, {
+    return http_guard(cliamp.http.post, api.base_url() .. path, {
         json = payload,
         headers = api_headers(),
     })
@@ -898,8 +909,16 @@ function engine.sync()
     engine.syncing = true
     local results = {}
     local ok = true
+    -- Each step runs in pcall so a throwing step (e.g. an unexpected Lua error)
+    -- records a FAILED result instead of unwinding past `engine.syncing = false`,
+    -- which would lock sync into "already in progress" for the session.
     local function step(label, fn)
-        local s, msg = fn()
+        local run_ok, s, msg = pcall(fn)
+        if not run_ok then
+            ok = false
+            table.insert(results, label .. " FAILED: " .. tostring(s))
+            return
+        end
         if s then
             table.insert(results, label .. ": " .. msg)
         else
@@ -907,8 +926,11 @@ function engine.sync()
             table.insert(results, label .. " FAILED: " .. msg)
         end
     end
-    local dev_ok, dev_msg = device.register()
-    if not dev_ok then ok = false end
+    local dev_ok, dev_msg = pcall(device.register)
+    if not dev_ok then
+        ok = false
+        dev_msg = tostring(dev_msg)
+    end
     table.insert(results, "device: " .. dev_msg)
     if subs.should_adopt() then
         step("adopt", subs.adopt)

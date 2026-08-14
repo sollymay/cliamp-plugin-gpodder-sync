@@ -1,5 +1,20 @@
 # Changelog
 
+## [0.0.2] - 2026-08-14
+
+### Fixed
+
+- **HTTP timeouts no longer break sync.** `cliamp.http` raises a Lua error on transport
+  failures (it caps requests at 5s), and `api.get`/`api.post` passed that straight through. A
+  slow gpodder.net response could throw out of `actions.pull`, `actions.upload`, etc., and a
+  throwing step in `engine.sync` left `syncing` stuck on `true` — every later sync then failed
+  with "sync already in progress" until restart. All HTTP calls are now `pcall`-guarded (returning
+  `status 0` on transport errors, handled like any non-200 response) and every sync step runs in
+  its own `pcall`, so a failed step is reported but sync keeps running and the flag is always
+  released.
+- Queued play actions and resume positions continue to be retried on the next `sync` / flush
+  timer, so nothing is lost on a timeout.
+
 ## [0.0.1] - 2026-08-10
 
 Initial release of `cliamp-plugin-gpodder-sync`.
