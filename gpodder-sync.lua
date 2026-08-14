@@ -926,10 +926,12 @@ function engine.sync()
             table.insert(results, label .. " FAILED: " .. msg)
         end
     end
-    local dev_ok, dev_msg = pcall(device.register)
+    local dev_ok, dev_result, dev_msg = pcall(device.register)
     if not dev_ok then
         ok = false
         dev_msg = tostring(dev_msg)
+    elseif dev_result == false then
+        ok = false
     end
     table.insert(results, "device: " .. dev_msg)
     if subs.should_adopt() then
