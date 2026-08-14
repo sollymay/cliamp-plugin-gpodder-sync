@@ -14,6 +14,11 @@
   released.
 - Queued play actions and resume positions continue to be retried on the next `sync` / flush
   timer, so nothing is lost on a timeout.
+- **`sync` no longer crashes on device registration.** `pcall(device.register)` was assigning the
+  boolean returned by `device.register` to the message variable, so `"device: " .. <boolean>`
+  raised a concat error and `ctrl+g` reported `keybind ctrl+g error` instead of syncing. The
+  result and message are now captured separately, and a failed registration marks the sync as
+  failed rather than silently succeeding.
 
 ## [0.0.1] - 2026-08-10
 
