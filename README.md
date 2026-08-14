@@ -30,6 +30,18 @@ cp gpodder-sync.lua ~/.config/cliamp/plugins/
 cliamp plugins trust gpodder-sync
 ```
 
+`cliamp plugins trust` records the SHA-256 of the plugin file in a `.trust.json` manifest next to
+the plugin. If you upgraded cliamp from a version without trust verification (before the trust
+system was introduced) — or the plugin file changed — the plugin is treated as untrusted and
+silently skipped on startup. In that case, approve it once and restart cliamp:
+
+```sh
+cliamp plugins trust --yes gpodder-sync
+```
+
+You can confirm the plugin is loading from `plugins.log` (look for `auto-sync enabled`) or with
+`cliamp plugins list` (TRUST column).
+
 Or install from the repository:
 
 ```sh
@@ -138,7 +150,9 @@ The plugin speaks the gPodder API 2 protocol:
   `cliamp.exec` and plays the file once finished. Files land in
   `~/Music/cliamp/gpodder/<feed-title>/` (override with `download_dir`). Because the plugin
   declares `exec` and `control` permissions, re-approve it after updating
-  (`cliamp plugins trust gpodder-sync`).
+  (`cliamp plugins trust gpodder-sync`). cliamp verifies plugin trust by file hash, so any change
+  to the plugin — or an upgrade from an older cliamp release that predates the trust system —
+  makes it untrusted until you run that command.
 - **One copy per episode** — a registry of downloaded episodes (episode URL → file path) means
   re-requesting a download that's already on disk just plays the cached file; deleting the file
   re-downloads it on the next request.
