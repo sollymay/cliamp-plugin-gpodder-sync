@@ -23,12 +23,12 @@
 local p = plugin.register({
     name = "gpodder-sync",
     type = "hook",
-    version = "0.0.2",
+    version = "0.0.3",
     description = "Sync gpodder.net subscriptions, play history, progress and downloads for cliamp",
     permissions = { "keymap", "control", "exec" },
 })
 
-local USER_AGENT = "cliamp-gpodder-sync/0.0.2"
+local USER_AGENT = "cliamp-gpodder-sync/0.0.3"
 
 -- Tuning constants. Tune these in [plugins.gpodder-sync] config where noted.
 local STORE_LIMIT = 1000 -- max entries kept in any plugin store table
@@ -474,8 +474,7 @@ end
 function actions.pull()
     local user = auth.username()
     if not user then return false, "no username configured" end
-    local since = store.get("actions_since")
-    if not since then return true, "skipped (no baseline timestamp yet; play a podcast to set one)" end
+    local since = store.get("actions_since") or 0
     local body, status = api.get("/api/2/episodes/" .. user .. ".json?since=" .. tostring(since) .. "&aggregated=true")
     if status ~= 200 then
         return false, "pull actions failed (HTTP " .. tostring(status) .. ")"
@@ -497,7 +496,14 @@ function actions.pull()
             end
         end
     end
-    store.set("resume", util.prune(stored, STORE_LIMIT))
+    local entries = {}
+    for ep, pos in pairs(stored) do entries[#entries + 1] = { ep = ep, ts = pos.ts or 0 } end
+    table.sort(entries, function(a, b) return a.ts > b.ts end)
+    local pruned = {}
+    for i = 1, math.min(#entries, STORE_LIMIT) do
+        pruned[entries[i].ep] = stored[entries[i].ep]
+    end
+    store.set("resume", pruned)
     return true, "stored " .. #(data.actions or {}) .. " episode action(s)"
 end
 

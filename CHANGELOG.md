@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.0.3] - 2026-08-15
+
+### Fixed
+
+- **Resume positions now sync on first `ctrl+g`.** `actions.pull` skipped the episode-action
+  request whenever no baseline `actions_since` timestamp was stored yet, so the very first sync
+  never downloaded your saved scrub positions from gpodder.net — resume-on-open had nothing to
+  seek to until an action had been uploaded at least once. The first pull now uses `since=0` to
+  fetch the full action history and establishes the baseline from the response.
+- **Resume store keeps the most recent episodes.** With the first pull now returning the full
+  history, the `STORE_LIMIT` prune could previously keep an arbitrary subset of episodes; it now
+  keeps the 1000 most-recently-touched entries.
+
 ## [0.0.2] - 2026-08-14
 
 ### Fixed
