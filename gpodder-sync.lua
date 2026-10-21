@@ -623,7 +623,8 @@ local playback = {}
 function playback.upload(path, position, total)
     if not config.bool("scrobble", true) then return end
     if not path then return end
-    if not position or position <= 0 then return end
+    -- a few seconds in would overwrite another device's progress on the server
+    if not position or position < RESUME.min_position then return end
     local feed = actions.feed_for_path(path)
     if not feed then return end
     actions.upload({
