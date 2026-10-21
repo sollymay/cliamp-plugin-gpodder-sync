@@ -519,8 +519,7 @@ function actions.upload(list)
         actions.queue(list)
         return false, "upload actions failed (HTTP " .. tostring(status) .. ")"
     end
-    local data = cliamp.json.decode(body)
-    if data and data.timestamp then store.set("actions_since", data.timestamp) end
+    -- the upload timestamp is not a pull cursor: storing it skips other devices' actions
     return true
 end
 
@@ -541,8 +540,6 @@ function actions.flush()
     if status ~= 200 then
         return false, "flush failed (HTTP " .. tostring(status) .. ")"
     end
-    local data = cliamp.json.decode(body)
-    if data and data.timestamp then store.set("actions_since", data.timestamp) end
     store.set("pending_actions", {})
     return true, "flushed " .. #queued .. " pending action(s)"
 end
